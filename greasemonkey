@@ -1,0 +1,45 @@
+#!/bin/bash
+
+echo -e "Content-Type: application/javascript\r\n\r\n"
+
+cat <<EOF
+// ==UserScript==
+// @name        Translate Fish Ranks
+// @namespace   http://jjwhg.net/~jjwhg/
+// @description Translate Fish rankings to TLPD links
+// @include     http://www.fishbattle.net/rank_ladder
+EOF
+
+echo "// @version     $(git describe)"
+
+cat <<EOF
+// @grants      none
+// ==/UserScript==
+
+var uo = XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE;
+
+var tlpd = {};
+EOF
+
+cat "$(dirname "$0")"/database | while read l
+do
+    id="$(echo "$l" | cut -d' ' -f1)"
+    ah="$(echo "$l" | cut -d' ' -f2)"
+    echo "tlpd[\"$id\"] = \"$ah\""
+done
+
+cat <<EOF
+var table = document.evaluate('//tr[@height="30"]/td[@align="left"]',
+                             document, null, uo, null);
+
+for (var i = 0; i < table.snapshotLength; i++) {
+    var item = table.snapshotItem(i)
+
+    var link = tlpd[item.innerHTML.toLowerCase()]
+    if (link != null) {
+        var name = link.split("_")[link.split("_").length - 1]
+        var a = "<a style=\"color: blue\" href=" + link + ">" + name + "</a>"
+        item.innerHTML = item.innerHTML + " (" + a + ")"
+    }
+}
+EOF
